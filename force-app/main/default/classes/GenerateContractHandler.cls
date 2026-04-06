@@ -88,6 +88,7 @@ public with sharing class GenerateContractHandler {
                 mail.setToAddresses(toAddresses);
                 mail.setReplyTo('fzoussama25@gmail.com');
                 mail.setSenderDisplayName('Salesforce Support');
+                mail.setWhatId(opp.Id);
                 mail.setSubject('New contract generated for opportunity ' + opp.Name);
                 mail.setPlainTextBody('A new contract was created for the opportunity with id: ' + opp.Id);
                 mails.add(mail);
@@ -126,6 +127,7 @@ public with sharing class GenerateContractHandler {
                 mail.setToAddresses(toAddresses);
                 mail.setReplyTo('fzoussama25@gmail.com');
                 mail.setSenderDisplayName('Salesforce Support');
+                mail.setWhatId(opp.Id);
                 mail.setSubject('Contract generation failed for opportunity: ' + opp.Name);
                 mail.setPlainTextBody('Contract generation failed for the opportunity with id: ' + opp.Id 
                 + '\nError: ' + errorMessages[opportunities.indexOf(opp)]);
