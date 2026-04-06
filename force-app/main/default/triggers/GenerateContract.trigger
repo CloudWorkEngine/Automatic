@@ -1,18 +1,7 @@
-trigger GenerateContract on Opportunity (before update) {
+trigger GenerateContract on Opportunity (before update, after update) {
     
-    List<Contract> contracts = new List<Contract>();
-    if(Trigger.isBefore && Trigger.isUpdate){
-        for(Opportunity opp:  Trigger.new){
-            if(opp.AccountId != null && !opp.IsContractGenerated && opp.Amount > 10000 && opp.StageName == 'Closed Won'){
-                Contract contract = new Contract(
-                    AccountId = opp.AccountId,
-                    OpportunityId = opp.Id,
-                    Status = 'Draft'
-                    );
-                opp.IsContractGenerated = true;
-                contracts.add(contract);
-            }
-        }
-        insert contracts;
-    }
+    if(trigger.isUpdate && trigger.isBefore)
+        GenerateContractHandler.beforeUpdate(trigger.new, trigger.oldMap);
+    if(trigger.isUpdate && trigger.isAfter)
+        GenerateContractHandler.afterUpdate(trigger.new, trigger.oldMap);
 }
