@@ -21,35 +21,50 @@ public with sharing class GenerateContractHandler {
         isRunning = true;
 
         List<Contract> contracts = new List<Contract>();
+        List<Opportunity> eligibleOpportunities = new List<Opportunity>();
         List<Opportunity> successOpportunities = new List<Opportunity>();
         List<Opportunity> failureOpportunities = new List<Opportunity>();
+        List<String> errorMessages = new List<String>();
 
         for (Opportunity opp : newList) {
             Opportunity oldOpp = oldMap.get(opp.Id);
-
-            if(opp.StageName == 'Closed Won' && opp.IsContractGenerated__c && opp.Amount > 10000
-                && opp.AccountId != null && !oldOpp.IsContractGenerated__c){
+            if(opp.StageName == 'Closed Won' && opp.Amount > 10000
+                && !oldOpp.IsContractGenerated__c){
+                if(opp.AccountId == null){
+                    failureOpportunities.add(opp);
+                    errorMessages.add('Opportunity does not have an Account.');
+                    continue;
+                }
                 Contract contract = new Contract(
                     Opportunity__c = opp.Id,
                     AccountId = opp.AccountId,
                     Status = 'Draft'
                 );
                 contracts.add(contract);
+                eligibleOpportunities.add(opp);
             }
         }
 
+        
         if (!contracts.isEmpty()) {
-            Database.SaveResult[] results = Database.insert(contracts, false);
-            
+            Database.SaveResult[] results = Database.insert(contracts,false);
+            for(Integer i = 0 ; i < results.size() ; i++ ){
+                Database.SaveResult result = results[i];
+                Opportunity relatedOpp = eligibleOpportunities[i];
+                if(result.isSuccess()){
+                    successOpportunities.add(relatedOpp);
+                } else {
+                    failureOpportunities.add(relatedOpp);
+                    errorMessages.add(result.getErrors()[0].getMessage());
+                }
+            }
         }
-
-        sendSuccessEmail(successOpportunities);
-        sendFailureEmail(failureOpportunities);
-
+        if(!failureOpportunities.isEmpty())sendFailureEmails(failureOpportunities,errorMessages);
+        if(!successOpportunities.isEmpty())sendSuccessEmails(successOpportunities);
         isRunning = false;
     }
 
-    public static void sendSuccessEmail(List<Opportunity> opportunities){
+    public static void sendSuccessEmails(List<Opportunity> opportunities){
 
         Set<Id> accountsIds = new Set<Id>();
         for(Opportunity opp: opportunities){
@@ -75,7 +90,6 @@ public with sharing class GenerateContractHandler {
                 mail.setSenderDisplayName('Salesforce Support');
                 mail.setSubject('New contract generated for opportunity ' + opp.Name);
                 mail.setPlainTextBody('A new contract was created for the opportunity with id: ' + opp.Id);
-
                 mails.add(mail);
             }
         }
@@ -85,7 +99,7 @@ public with sharing class GenerateContractHandler {
     }
 
 
-    public static void sendFailureEmail(List<Opportunity> opportunities){
+    public static void sendFailureEmails(List<Opportunity> opportunities, List<String> errorMessages){
 
         Set<Id> OwnerIds = new Set<Id>();
         for(Opportunity opp: opportunities){
@@ -113,7 +127,8 @@ public with sharing class GenerateContractHandler {
                 mail.setReplyTo('fzoussama25@gmail.com');
                 mail.setSenderDisplayName('Salesforce Support');
                 mail.setSubject('Contract generation failed for opportunity: ' + opp.Name);
-                mail.setPlainTextBody('Contract generation failed for the opportunity with id: ' + opp.Id);
+                mail.setPlainTextBody('Contract generation failed for the opportunity with id: ' + opp.Id 
+                + '\nError: ' + errorMessages[opportunities.indexOf(opp)]);
 
                 mails.add(mail);
             }
